@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DoctorMouse</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+
+  <body>
+    <main class="container">
+      <!-- <h1>Welcome to Tauri</h1>
+
+      <div class="row">
+        <a href="https://vitejs.dev" target="_blank">
+          <img src="/src/assets/vite.svg" class="logo vite" alt="Vite logo" />
+        </a>
+        <a href="https://tauri.app" target="_blank">
+          <img
+            src="/src/assets/tauri.svg"
+            class="logo tauri"
+            alt="Tauri logo"
+          />
+        </a>
+        <a href="https://www.typescriptlang.org/docs" target="_blank">
+          <img
+            src="/src/assets/typescript.svg"
+            class="logo typescript"
+            alt="typescript logo"
+          />
+        </a>
+      </div>
+      <p>Click on the Tauri logo to learn more about the framework</p>
+
+      <form class="row" id="greet-form">
+        <input id="greet-input" placeholder="Enter a name..." />
+        <button type="submit">Greet</button>
+      </form>
+      <p id="greet-msg"></p> -->
+
+      <div id="control" class="row-smallmargin">
+        <button id="button_open_file">Open CSV File</button>
+        <button id="button_open_port">Open UART Port</button>
+        <select name="select_port" id="select_port"></select>
+        <button id="button_reload_port">Reload</button>
+        <button id="button_save_file">Save Log to File</button>
+        <button id="button_close_port">Close UART Port</button>
+      </div>
+
+      <div id="graph_whole"></div>
+
+      <div id="maze_whole"></div>
+    </main>
+  </body>
+</html>
