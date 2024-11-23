@@ -1,9 +1,9 @@
-import { convertFileSrc } from '@tauri-apps/api/core';
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { listen } from "@tauri-apps/api/event";
+import { writeTextFile } from '@tauri-apps/plugin-fs';
 
 import { SerialPort, PortInfo } from "tauri-plugin-serialplugin";
-import { open } from '@tauri-apps/plugin-dialog';
+import { open, save } from '@tauri-apps/plugin-dialog';
 
 import * as Plotly from 'plotly.js-dist-min';
 
@@ -631,6 +631,20 @@ const updateGraph = () => {
   }
 };
 
+//////////////////
+// HTML Control //
+//////////////////
+const setUartConnected = (connected: boolean) => {
+  const buttonOpen = document.getElementById("button_open_port") as HTMLButtonElement;
+  const buttonClose = document.getElementById("button_close_port") as HTMLButtonElement;
+  const buttonReload = document.getElementById("button_reload_port") as HTMLButtonElement;
+  const drawerPort = document.getElementById("select_port") as HTMLSelectElement;
+  buttonOpen.disabled = connected;
+  buttonClose.disabled = !connected;
+  buttonReload.disabled = connected;
+  drawerPort.disabled = connected;
+}
+
 ////////////////
 // HTML Event //
 ////////////////
@@ -643,6 +657,7 @@ const onUartOpenButtonClicked = async () => {
     name: portName,
   });
   if (result) {
+    setUartConnected(true);
     console.log('Port opened: ', portName);
   } else {
     console.log('Failed to open port: ', portName);
@@ -652,6 +667,7 @@ const onUartOpenButtonClicked = async () => {
 const onUartCloseButtonClicked = async () => {
   const result: boolean = await invoke("close_uart", {});
   if (result) {
+    setUartConnected(false);
     console.log('Port closed.');
   } else {
     console.log('Failed to close port.');
@@ -739,10 +755,38 @@ const onOpenCsvFileButtonClicked = async () => {
   }
 };
 
+const onSaveFileButtonClicked = async () => {
+  const file = await save({
+    filters: [{
+      name: 'CSV File',
+      extensions: ['csv'],
+    }]
+  });
+  console.log('Selected filepath:', file);
+
+  if (file) {
+    try {
+      await writeTextFile(file, currentData);
+      console.log('Saved file:', file);
+    } catch (e) {
+      console.error('Failed to save file:', file);
+    }
+  }
+}
+
 ///////////////////////
 // DOMContenttLoaded //
 ///////////////////////
 window.addEventListener("DOMContentLoaded", () => {
+  setUartConnected(false);
+
+  listen('logdata', (event) => {
+    const payload = event.payload as string;
+    currentData = payload;
+    console.log('Received data:', currentData);
+    parseStringData(currentData);
+    updateGraph();
+  });
 });
 
 /////////////////////
@@ -757,12 +801,4 @@ document.getElementById("button_open_file")?.addEventListener("click", onOpenCsv
 document.getElementById("button_open_port")?.addEventListener("click", onUartOpenButtonClicked);
 document.getElementById("button_close_port")?.addEventListener("click", onUartCloseButtonClicked);
 document.getElementById("button_reload_port")?.addEventListener("click", onUartReloadButtonClicked);
-
-listen('logdata', (event) => {
-  debugger;
-  const payload = event.payload as {data: string};
-  currentData = payload.data;
-  console.log('Received data:', currentData);
-  parseStringData(currentData);
-  updateGraph();
-});
+document.getElementById("button_save_file")?.addEventListener("click", onSaveFileButtonClicked);

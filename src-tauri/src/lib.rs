@@ -30,23 +30,30 @@ fn close_uart() -> bool {
     return true
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
+// #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    PORTNAME.lock().unwrap().replace("/dev/ttyACM0".to_string());
-
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_serialplugin::init())
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![open_uart, close_uart])
         .setup(|app| {
-            // let app_handle = app.app_handle().clone();
-            let app_handle = app.handle().clone();
-            let _logger_handle = tauri::async_runtime::spawn(async move {
+            let app_handle = app.app_handle().clone();
+            // let _logger_handle = tauri::async_runtime::spawn(async move {
+            // std::thread::spawn(move || {
+            tauri::async_runtime::spawn(async move {
                 // UART からの受信ルーチン
+                sleep(std::time::Duration::from_secs(3));
+
                 loop {
-                    let portname = PORTNAME.lock().unwrap();
-                    if portname.is_none() {
+                    let portname_mutex = PORTNAME.lock().unwrap();
+                    if portname_mutex.is_none() {
+                        drop(portname_mutex);
                         sleep(std::time::Duration::from_millis(100));
                         continue;
                     }
-                    let portname = portname.as_ref().unwrap();
+                    let portname = portname_mutex.as_ref().unwrap();
 
                     let serial_option = serialport::new(portname, 921600)
                         .stop_bits(serialport::StopBits::One)
@@ -54,6 +61,7 @@ pub fn run() {
                         .parity(serialport::Parity::None)
                         .timeout(Duration::from_millis(100))
                         .open();
+                    drop(portname_mutex);
                     if serial_option.is_err() {
                         eprintln!("Error: {:?}", serial_option.err());
                         sleep(std::time::Duration::from_millis(100));
@@ -68,7 +76,6 @@ pub fn run() {
                     let mut data = Vec::new();
 
                     loop {
-                        println!("Reading...");
                         match serial.read(buf.as_mut_slice()) {
                             Ok(t) => {
                                 let bytes = &buf[..t];
@@ -79,7 +86,6 @@ pub fn run() {
                                 }
 
                                 let string = res.unwrap();
-                                println!("{}", string);
 
                                 if saving {
                                     data.extend_from_slice(bytes);
@@ -99,7 +105,7 @@ pub fn run() {
                                     app_handle
                                         .emit("logdata", Some(String::from_utf8_lossy(&data).to_string())).unwrap();
 
-                                    // println!("Data: {:?}", String::from_utf8_lossy(&data));
+                                    println!("Data: {:?}", String::from_utf8_lossy(&data));
                                     println!("Data reception completed.");
                                 }
                             }
@@ -115,11 +121,6 @@ pub fn run() {
             });
             Ok(())
         })
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_serialplugin::init())
-        .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![open_uart, close_uart])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

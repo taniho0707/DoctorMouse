@@ -72,16 +72,17 @@ h1 {
 
 input,
 button {
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid transparent;
-  padding: 0.6em 1.2em;
+  padding: 0.4em 1em;
+  margin-left: 0.2em;
+  margin-right: 0.2em;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
   color: #0f0f0f;
   background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+  border-color: #505050;
 }
 
 button {
@@ -96,13 +97,31 @@ button:active {
   background-color: #e8e8e8;
 }
 
+button:disabled,
+select:disabled {
+  cursor: not-allowed;
+  color: #a0a0a0;
+  background-color: #f6f6f6;
+  border-color: #E0E0E0;
+}
+
 input,
 button {
   outline: none;
 }
 
-#greet-input {
-  margin-right: 5px;
+select {
+  border-radius: 6px;
+  border: 1px solid transparent;
+  /* padding: 0.4em 1em;
+  margin-left: 0.2em;
+  margin-right: 0.2em; */
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  color: #0f0f0f;
+  background-color: #ffffff;
+  border-color: #505050;
 }
 
 @media (prefers-color-scheme: dark) {
