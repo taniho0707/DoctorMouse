@@ -15,7 +15,9 @@
     "@tauri-apps/plugin-fs": "~2",
     "@tauri-apps/plugin-shell": "^2",
     "@types/plotly.js": "^2.35.0",
+    "@types/plotly.js-dist-min": "^2.3.4",
     "plotly.js-dist": "^2.35.2",
+    "plotly.js-dist-min": "^2.35.2",
     "tauri-plugin-serialplugin": "^2.3.1"
   },
   "devDependencies": {

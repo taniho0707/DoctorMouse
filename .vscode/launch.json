@@ -1,0 +1,41 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Tauri Dev Debug",
+      "cargo": {
+        "args": ["build", "--manifest-path=./src-tauri/Cargo.toml", "--no-default-features"]
+      },
+      "preLaunchTask": "ui:dev:start",
+      "postDebugTask": "ui:dev:stop",
+      "env": {
+        "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS": "--remote-debugging-port=1422"
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Tauri Prod Debug",
+      "cargo": {
+        "args": ["build", "--release", "--manifest-path=./src-tauri/Cargo.toml"]
+      },
+      "preLaunchTask": "ui:build"
+    },
+    {
+      "name": "Attach to Webview",
+      "port": 1422,
+      "request": "attach",
+      "type": "chrome",
+      "webRoot": "${workspaceFolder}"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Tauri Dev All",
+      "configurations": ["Tauri Dev Debug", "Attach to Webview"],
+      "stopAll": true
+    }
+  ]
+}

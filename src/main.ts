@@ -1,27 +1,17 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 
 import { SerialPort, PortInfo } from "tauri-plugin-serialplugin";
 import { open } from '@tauri-apps/plugin-dialog';
 
-import * as Plotly from 'plotly.js-dist';
-
-let greetInputEl: HTMLInputElement | null;
-let greetMsgEl: HTMLElement | null;
-
-async function greet() {
-  if (greetMsgEl && greetInputEl) {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    greetMsgEl.textContent = await invoke("greet", {
-      name: greetInputEl.value,
-    });
-  }
-}
+import * as Plotly from 'plotly.js-dist-min';
 
 /////////////////////
 // Global Variable //
 /////////////////////
 let uartPorts: {[key: string]: PortInfo;} = {};
+let currentData: string = '';
 
 // 現時点では [time,motorL,motorR,motorCurrentL,motorCurrentR,motorS,encL,encR,wallFL,wallL,wallC,wallR,wallFR,distC,distF,angF,kabekireL,kabekireR,targetVT,targetVR,currentVT,currentVR,posX,posY,posT,gyroY,accX,accY,accZ,battery]
 let header: string[] = [];
@@ -33,6 +23,56 @@ let data: string[][] = [];
 /////////////////////
 // Parse Functions //
 /////////////////////
+const parseStringData = (txt: string) => {
+  const lines = txt.split('\n');
+
+  // TODO: /^time,/ or /[DEBUG]\n$/ or /\+(---\+){32} を満たす行を探す
+  let headerIndex = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].startsWith('time,')) {
+      headerIndex = i;
+      break;
+    }
+  }
+  if (headerIndex == -1) {
+    console.log('This file does not contain header line.');
+    return;
+  }
+
+  header = lines[headerIndex].split(',');
+  let unordered_data = [];
+  for (let i = headerIndex + 1; i < lines.length; i++) {
+    const line = lines[i].split(',');
+    if (line.length === header.length) {
+      unordered_data.push(line);
+    } else {
+      console.log(`Line ${i} is invalid.`);
+    }
+  }
+
+  // header[0] == 'time' の場合、time を [us] から [ms] に変換し、1個めのデータが0になるようにオフセットする
+  if (header[0] == 'time') {
+    const timeOffset = Number(unordered_data[0][0]);
+    for (let i = 0; i < unordered_data.length; i++) {
+      unordered_data[i][0] = String((Number(unordered_data[i][0]) - timeOffset) / 1000);
+    }
+  }
+
+  // unordered_data の縦横を反転する
+  data = [];
+  for (let i = 0; i < header.length; i++) {
+    data.push([]);
+  }
+  for (let i = 0; i < unordered_data.length; i++) {
+    for (let j = 0; j < header.length; j++) {
+      data[j].push(unordered_data[i][j]);
+    }
+  }
+
+  console.log(header);
+  console.log(data);
+}
+
 const getColumnIndexFromHeader = (column: string): number => {
   return header.indexOf(column);
 }
@@ -88,7 +128,7 @@ const updateGraph = () => {
       name: 'Current Velocity Rotation',
       yaxis: 'y2',
     };
-    const layout = {
+    const layout: Partial<Plotly.Layout> = {
       title: {
         text: '1. 目標速度と現在速度',
         x: 0.02,
@@ -158,7 +198,7 @@ const updateGraph = () => {
       name: 'Current Velocity Translation',
       yaxis: 'y2',
     };
-    const layout = {
+    const layout: Partial<Plotly.Layout> = {
       title: {
         text: '2. 左右モーターと目標速度・現在速度',
         x: 0.02,
@@ -235,7 +275,7 @@ const updateGraph = () => {
       name: 'Current Velocity Translation',
       yaxis: 'y2',
     };
-    const layout = {
+    const layout: Partial<Plotly.Layout> = {
       title: {
         text: '3. 各加速度と目標速度・現在速度',
         x: 0.02,
@@ -322,7 +362,7 @@ const updateGraph = () => {
       name: 'Kabekire R',
       yaxis: 'y2',
     };
-    const layout = {
+    const layout: Partial<Plotly.Layout> = {
       title: {
         text: '4. 壁センサと壁切れ',
         x: 0.02,
@@ -405,7 +445,7 @@ const updateGraph = () => {
       name: 'Distance From Center Wall',
       yaxis: 'y2',
     };
-    const layout = {
+    const layout: Partial<Plotly.Layout> = {
       title: {
         text: '5-1. 壁センサと計算値1',
         x: 0.02,
@@ -494,7 +534,7 @@ const updateGraph = () => {
       name: 'Angle From Front Wall',
       yaxis: 'y2',
     };
-    const layout = {
+    const layout: Partial<Plotly.Layout> = {
       title: {
         text: '5-2. 壁センサと計算値2',
         x: 0.02,
@@ -541,7 +581,7 @@ const updateGraph = () => {
       type: 'scatter',
       name: 'Position',
     };
-    const layout = {
+    const layout: Partial<Plotly.Layout> = {
       title: {
         text: '6. (X,Y) Plot',
         x: 0.02,
@@ -591,11 +631,34 @@ const updateGraph = () => {
   }
 };
 
-
 ////////////////
 // HTML Event //
 ////////////////
-function onUartReloadButtonClicked() {
+const onUartOpenButtonClicked = async () => {
+  const selectEl = document.getElementById("select_port") as HTMLSelectElement;
+  const portName = selectEl.value;
+  if (!portName) return;
+
+  const result: boolean = await invoke("open_uart", {
+    name: portName,
+  });
+  if (result) {
+    console.log('Port opened: ', portName);
+  } else {
+    console.log('Failed to open port: ', portName);
+  }
+};
+
+const onUartCloseButtonClicked = async () => {
+  const result: boolean = await invoke("close_uart", {});
+  if (result) {
+    console.log('Port closed.');
+  } else {
+    console.log('Failed to close port.');
+  }
+};
+
+const onUartReloadButtonClicked = () => {
   SerialPort.available_ports().then((ports) => {
     console.log('Available ports:', ports);
     uartPorts = ports;
@@ -611,9 +674,9 @@ function onUartReloadButtonClicked() {
       }
     }
   });
-}
+};
 
-async function onOpenCsvFileButtonClicked() {
+const onOpenCsvFileButtonClicked = async () => {
   const file = await open({
     multiple: false,
     directory: false,
@@ -674,18 +737,12 @@ async function onOpenCsvFileButtonClicked() {
 
     updateGraph();
   }
-}
+};
 
 ///////////////////////
 // DOMContenttLoaded //
 ///////////////////////
 window.addEventListener("DOMContentLoaded", () => {
-  greetInputEl = document.querySelector("#greet-input");
-  greetMsgEl = document.querySelector("#greet-msg");
-  document.querySelector("#greet-form")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    greet();
-  });
 });
 
 /////////////////////
@@ -696,23 +753,16 @@ window.addEventListener("DOMContentLoaded", () => {
 onUartReloadButtonClicked();
 
 // Set event listener
-document.getElementById("button_reload_port")?.addEventListener("click", onUartReloadButtonClicked);
 document.getElementById("button_open_file")?.addEventListener("click", onOpenCsvFileButtonClicked);
+document.getElementById("button_open_port")?.addEventListener("click", onUartOpenButtonClicked);
+document.getElementById("button_close_port")?.addEventListener("click", onUartCloseButtonClicked);
+document.getElementById("button_reload_port")?.addEventListener("click", onUartReloadButtonClicked);
 
-// // Open a port
-// const port = new SerialPort({ 
-//   path: "/dev/ttyACM0", 
-//   baudRate: 921600,
-// });
-
-// await port.open();
-// await port.startListening();
-
-// await port.listen((data) => {
-//   console.log('Received:', data);
-// });
-
-// await port.stopListening();
-// await port.close();
-
-// // await port.write("Hello, Serial Port!");
+listen('logdata', (event) => {
+  debugger;
+  const payload = event.payload as {data: string};
+  currentData = payload.data;
+  console.log('Received data:', currentData);
+  parseStringData(currentData);
+  updateGraph();
+});

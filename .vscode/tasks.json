@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "ui:dev:start",
+      "type": "shell",
+      "isBackground": true,
+      "command": "yarn",
+      "args": ["dev"],
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*",
+          "endsPattern": "^.*Starting\\.\\.\\."
+        }
+      }
+    },
+    {
+      "label": "ui:dev:stop",
+      "type": "shell",
+      "command": "echo ${input:terminate}"
+    },
+    {
+      "label": "ui:build",
+      "type": "shell",
+      "command": "yarn",
+      "args": ["build"]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "terminate",
+      "type": "command",
+      "command": "workbench.action.tasks.terminate",
+      "args": "ui:dev:start"
+    }
+  ]
+}
