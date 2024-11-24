@@ -142,6 +142,7 @@ const updateGraph = () => {
       legend: {
         x: 0.02,
         y: 0.98,
+        bgcolor: 'rgba(255, 255, 255, 0.5)',
       },
       height: 600,
       xaxis: {
@@ -212,6 +213,7 @@ const updateGraph = () => {
       legend: {
         x: 0.02,
         y: 0.98,
+        bgcolor: 'rgba(255, 255, 255, 0.5)',
       },
       height: 600,
       xaxis: {
@@ -289,6 +291,7 @@ const updateGraph = () => {
       legend: {
         x: 0.02,
         y: 0.98,
+        bgcolor: 'rgba(255, 255, 255, 0.5)',
       },
       height: 600,
       xaxis: {
@@ -376,6 +379,7 @@ const updateGraph = () => {
       legend: {
         x: 0.02,
         y: 0.98,
+        bgcolor: 'rgba(255, 255, 255, 0.5)',
       },
       height: 600,
       xaxis: {
@@ -595,6 +599,7 @@ const updateGraph = () => {
       legend: {
         x: 0.02,
         y: 0.98,
+        bgcolor: 'rgba(255, 255, 255, 0.5)',
       },
       height: 1000,
       width: 1000,
